@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container-fluid">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h4>Admin Dashboard</h4>
+      <ul class="list-group">
+        <li class="list-group-item active" onclick="window.location.href='clients.html'">Clients</li>
+        <li class="list-group-item" onclick="window.location.href='jobs.html'">Jobs</li>
+        <li class="list-group-item" onclick="window.location.href='users.html'">Users</li>
+        <li class="list-group-item" onclick="window.location.href='settings.html'">Settings</li>
+        <li class="list-group-item" onclick="logout()">Logout</li>
+      </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-10">
+      <div class="section-content">
+        <h1>Clients</h1>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Client ID</th>
+              <th>Client Name</th>
+              <th>Check-In Time</th>
+              <th>Check-Out Time</th>
+              <th>Current Location</th> <!-- Added column for location -->
+            </tr>
+          </thead>
+          <tbody id="clientActivityTable">
+            <!-- Client data will be populated here by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    // Check if admin is logged in before loading the page
+    function checkAdminLogin() {
+      const token = localStorage.getItem("adminToken");
+
+      if (!token) {
+        alert("You must be logged in as an admin.");
+        window.location.href = "login.html"; // Redirect to login if no token
+      }
+    }
+
+    // Fetch client data (from API)
+    async function fetchClientData() {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        alert("You must be logged in as an admin.");
+        window.location.href = "login.html"; // Redirect to login page
+        return;
+      }
+
+      try {
+        console.log('Token:', token); // Debugging line to check token
+
+        const response = await fetch("https://fsm-nx79.onrender.com/api/clients", {
+          headers: { 
+            "Authorization": `Bearer ${token}`, // Add Bearer before the token
+            "Content-Type": "application/json"
+          },
+        });
+
+        console.log('Response Status:', response.status); // Debugging line to check response status
+        console.log('Response Headers:', response.headers); // Debugging line to check response headers
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Error Response:', error); // Log the error response from the server
+          throw new Error("Failed to fetch client data");
+        }
+
+        const clients = await response.json();
+        console.log('Clients Data:', clients); // Debugging line to check client data
+        populateClientTable(clients);
+      } catch (error) {
+        console.error("Error fetching client data:", error);
+        alert("Error fetching client data. Please try again.");
+      }
+    }
+
+    // Populate the table with client data
+    function populateClientTable(clients) {
+      const tableBody = document
+        .getElementById("clientActivityTable")
+        .getElementsByTagName("tbody")[0];
+      tableBody.innerHTML = ""; // Clear any existing rows
+
+      clients.forEach((client) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${client.clientId}</td>
+          <td>${client.clientName}</td>
+          <td>${client.checkInTime || "N/A"}</td>
+          <td>${client.checkOutTime || "N/A"}</td>
+          <td>${client.currentLocation || "N/A"}</td>
+        `;
+
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Logout functionality
+    function logout() {
+      localStorage.removeItem("adminToken");
+      window.location.href = "login.html"; // Redirect to login page after logout
+    }
+
+    // Call checkAdminLogin and fetch client data on page load
+    window.onload = function () {
+      checkAdminLogin(); // Ensure the admin is logged in
+      fetchClientData(); // Fetch client data for the admin dashboard
+    };
+  </script>
+</body>
+</html>

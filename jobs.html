@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Jobs - Admin Dashboard</title>
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container-fluid">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h4>Admin Dashboard</h4>
+      <ul class="list-group">
+        <li class="list-group-item">Clients</li>
+        <li class="list-group-item active">Jobs</li>
+        <li class="list-group-item">Users</li>
+        <li class="list-group-item">Settings</li>
+        <li class="list-group-item">Logout</li>
+      </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-10">
+      <div class="section-content">
+        <h1>Manage Jobs</h1>
+
+        <!-- Button to Add New Job -->
+        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#jobModal">Create New Job</button>
+
+        <!-- Jobs Table -->
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>Job Name</th>
+              <th>Status</th>
+              <th>Assigned Technician</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobsTable">
+            <!-- Job data will be populated here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Creating/Updating Jobs -->
+  <div class="modal fade" id="jobModal" tabindex="-1" aria-labelledby="jobModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="jobModalLabel">Create Job</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="jobForm">
+            <div class="mb-3">
+              <label for="jobName" class="form-label">Job Name</label>
+              <input type="text" class="form-control" id="jobName" required>
+            </div>
+            <div class="mb-3">
+              <label for="jobStatus" class="form-label">Status</label>
+              <select class="form-select" id="jobStatus" required>
+                <option value="open">Open</option>
+                <option value="pending">Pending</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="technician" class="form-label">Assign Technician</label>
+              <select class="form-select" id="technician" required>
+                <!-- List of technicians will be populated here -->
+              </select>
+            </div>
+            <input type="hidden" id="jobId"> <!-- Hidden input for updating a job -->
+            <button type="submit" class="btn btn-primary">Save Job</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    // Fetch jobs and technicians from the backend
+    async function fetchJobs() {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        alert("You must be logged in as an admin.");
+        window.location.href = "login.html"; // Redirect to login page
+        return;
+      }
+
+      try {
+        const response = await fetch("https://fsm-nx79.onrender.com/api/jobs", {
+          headers: { Authorization: token },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch jobs");
+        }
+
+        const jobs = await response.json();
+        populateJobsTable(jobs);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        alert("Error fetching jobs. Please try again.");
+      }
+    }
+
+    // Populate jobs table with job data
+    function populateJobsTable(jobs) {
+      const tableBody = document.getElementById("jobsTable");
+      tableBody.innerHTML = ""; // Clear any existing rows
+
+      jobs.forEach((job) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${job.jobId}</td>
+          <td>${job.jobName}</td>
+          <td>${job.status}</td>
+          <td>${job.assignedTechnician || "Unassigned"}</td>
+          <td>
+            <button class="btn btn-warning" onclick="editJob(${job.jobId})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteJob(${job.jobId})">Delete</button>
+            <button class="btn btn-info" onclick="assignTechnician(${job.jobId})">Assign Technician</button>
+          </td>
+        `;
+
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Fetch technicians to populate the dropdown for assigning technicians
+    async function fetchTechnicians() {
+      try {
+        const response = await fetch("https://fsm-nx79.onrender.com/api/technicians");
+        const technicians = await response.json();
+        populateTechnicianDropdown(technicians);
+      } catch (error) {
+        console.error("Error fetching technicians:", error);
+      }
+    }
+
+    // Populate technician dropdown for job assignment
+    function populateTechnicianDropdown(technicians) {
+      const technicianSelect = document.getElementById("technician");
+      technicianSelect.innerHTML = ""; // Clear existing options
+
+      technicians.forEach((technician) => {
+        const option = document.createElement("option");
+        option.value = technician.id;
+        option.textContent = technician.name;
+        technicianSelect.appendChild(option);
+      });
+    }
+
+    // Create or update job
+    document.getElementById("jobForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const jobName = document.getElementById("jobName").value;
+      const jobStatus = document.getElementById("jobStatus").value;
+      const technicianId = document.getElementById("technician").value;
+      const jobId = document.getElementById("jobId").value;
+
+      const jobData = {
+        jobName,
+        status: jobStatus,
+        technicianId: technicianId ? parseInt(technicianId) : null,
+      };
+
+      try {
+        let response;
+
+        if (jobId) {
+          response = await fetch(`https://fsm-nx79.onrender.com/api/jobs/${jobId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: localStorage.getItem("adminToken"),
+            },
+            body: JSON.stringify(jobData),
+          });
+        } else {
+          response = await fetch("https://fsm-nx79.onrender.com/api/jobs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: localStorage.getItem("adminToken"),
+            },
+            body: JSON.stringify(jobData),
+          });
+        }
+
+        if (response.ok) {
+          fetchJobs(); // Refresh the job list
+          alert("Job saved successfully!");
+          document.getElementById("jobModal").modal("hide"); // Close the modal
+        } else {
+          const error = await response.json();
+          alert(error.message || "Failed to save job.");
+        }
+      } catch (error) {
+        console.error("Error saving job:", error);
+        alert("An error occurred. Please try again.");
+      }
+    });
+
+    // Edit job
+    function editJob(jobId) {
+      const job = jobs.find((job) => job.jobId === jobId); // Assuming jobs are stored in a variable `jobs`
+      document.getElementById("jobName").value = job.jobName;
+      document.getElementById("jobStatus").value = job.status;
+      document.getElementById("technician").value = job.assignedTechnician ? job.assignedTechnician.id : "";
+      document.getElementById("jobId").value = job.jobId;
+      document.getElementById("jobModalLabel").textContent = "Update Job";
+      document.getElementById("jobModal").modal("show");
+    }
+
+    // Delete job
+    async function deleteJob(jobId) {
+      const confirmDelete = confirm("Are you sure you want to delete this job?");
+      if (confirmDelete) {
+        try {
+          const response = await fetch(`https://fsm-nx79.onrender.com/api/jobs/${jobId}`, {
+            method: "DELETE",
+            headers: { Authorization: localStorage.getItem("adminToken") },
+          });
+
+          if (response.ok) {
+            fetchJobs(); // Refresh job list
+            alert("Job deleted successfully.");
+          } else {
+            alert("Failed to delete job.");
+          }
+        } catch (error) {
+          console.error("Error deleting job:", error);
+          alert("An error occurred. Please try again.");
+        }
+      }
+    }
+
+    // Assign technician to job
+    function assignTechnician(jobId) {
+      const technicianId = prompt("Enter Technician ID to assign:");
+      if (technicianId) {
+        // Call API to assign technician to job
+        fetch(`https://fsm-nx79.onrender.com/api/jobs/${jobId}/assign`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: localStorage.getItem("adminToken"),
+          },
+          body: JSON.stringify({ technicianId }),
+        }).then(response => {
+          if (response.ok) {
+            alert("Technician assigned successfully.");
+            fetchJobs(); // Refresh job list
+          } else {
+            alert("Failed to assign technician.");
+          }
+        }).catch(error => {
+          console.error("Error assigning technician:", error);
+        });
+      }
+    }
+
+    window.onload = function () {
+      fetchJobs(); // Fetch jobs on page load
+      fetchTechnicians(); // Fetch technicians on page load
+    };
+  </script>
+</body>
+</html>
