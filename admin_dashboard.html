@@ -45,11 +45,31 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  
   <script type="module">
+    // Firebase configuration object
+    const firebaseConfig = {
+      apiKey: "AIzaSyDJFmX1RhaIQRtcy-5nZDh2WbBwQyCWauo",
+      authDomain: "fsm-webapp.firebaseapp.com",
+      projectId: "fsm-webapp",
+      storageBucket: "fsm-webapp.firebasestorage.app",
+      messagingSenderId: "839677403577",
+      appId: "1:839677403577:web:a106c1f8981866678d5668",
+      measurementId: "G-KCY1LTTJWN"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const analytics = firebase.analytics(app);
+
     // Check if admin is logged in before loading the page
     function checkAdminLogin() {
       const token = localStorage.getItem("adminToken");
-
       if (!token) {
         window.location.href = "/login.html"; // Redirect to login if no token
       }
@@ -82,11 +102,43 @@
       document.getElementById("logoutLink").addEventListener("click", logout);
     }
 
-    // Call setupNavigation to attach event listeners once the page is loaded
+    // Fetch client data from Firestore
+    async function fetchClientData() {
+      try {
+        const querySnapshot = await db.collection("checkins").get();
+        const clients = querySnapshot.docs.map(doc => {
+          return {
+            clientId: doc.id,
+            ...doc.data()
+          };
+        });
+
+        // Populate the table with client data
+        const tableBody = document.getElementById("clientActivityTable");
+        tableBody.innerHTML = ''; // Clear the table before adding new data
+
+        clients.forEach(client => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${client.clientId}</td>
+            <td>${client.clientName}</td>
+            <td>${client.checkInTime}</td>
+            <td>${client.checkOutTime}</td>
+            <td>${client.location}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Error fetching client data: ", error);
+      }
+    }
+
+    // Call setupNavigation and fetch data once page is loaded
     window.onload = function () {
       checkAdminLogin(); // Ensure the admin is logged in
       setupNavigation();  // Set up the navigation events
+      fetchClientData();  // Fetch client data on load
     };
   </script>
-</body>
+</body>  
 </html>

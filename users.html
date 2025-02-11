@@ -85,144 +85,167 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
-    // Fetch users from the backend
-    async function fetchUsers() {
-      const token = localStorage.getItem("adminToken");
-      if (!token) {
-        alert("You must be logged in as an admin.");
-        window.location.href = "login.html"; // Redirect to login page
-        return;
-      }
-
-      try {
-        const response = await fetch("https://fsm-nx79.onrender.com/api/users", {
-          headers: { Authorization: token },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
-        const users = await response.json();
-        populateUsersTable(users);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        alert("Error fetching users. Please try again.");
-      }
+  // Fetch users from the backend
+  async function fetchUsers() {
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      alert("You must be logged in as an admin.");
+      window.location.href = "login.html"; // Redirect to login page
+      return;
     }
 
-    // Populate users table with user data
-    function populateUsersTable(users) {
-      const tableBody = document.getElementById("usersTable");
-      tableBody.innerHTML = ""; // Clear any existing rows
-
-      users.forEach((user) => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${user.userId}</td>
-          <td>${user.name}</td>
-          <td>${user.email}</td>
-          <td>${user.role}</td>
-          <td>
-            <button class="btn btn-warning" onclick="editUser(${user.userId})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteUser(${user.userId})">Delete</button>
-          </td>
-        `;
-
-        tableBody.appendChild(row);
+    try {
+      const response = await fetch("https://fsm-nx79.onrender.com/api/users", {
+        headers: { Authorization: token },
       });
-    }
 
-    // Create or update user
-    document.getElementById("userForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      const userName = document.getElementById("userName").value;
-      const userEmail = document.getElementById("userEmail").value;
-      const userRole = document.getElementById("userRole").value;
-      const userId = document.getElementById("userId").value;
-
-      const userData = {
-        name: userName,
-        email: userEmail,
-        role: userRole,
-      };
-
-      try {
-        let response;
-
-        if (userId) {
-          response = await fetch(`https://fsm-nx79.onrender.com/api/users/${userId}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: localStorage.getItem("adminToken"),
-            },
-            body: JSON.stringify(userData),
-          });
-        } else {
-          response = await fetch("https://fsm-nx79.onrender.com/api/users", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: localStorage.getItem("adminToken"),
-            },
-            body: JSON.stringify(userData),
-          });
-        }
-
-        if (response.ok) {
-          fetchUsers(); // Refresh the user list
-          alert("User saved successfully!");
-          document.getElementById("userModal").modal("hide"); // Close the modal
-        } else {
-          const error = await response.json();
-          alert(error.message || "Failed to save user.");
-        }
-      } catch (error) {
-        console.error("Error saving user:", error);
-        alert("An error occurred. Please try again.");
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
       }
-    });
 
-    // Edit user
-    function editUser(userId) {
-      const user = users.find((user) => user.userId === userId); // Assuming users are stored in a variable `users`
+      const users = await response.json();
+      populateUsersTable(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      alert("Error fetching users. Please try again.");
+    }
+  }
+
+  // Populate users table with user data
+  function populateUsersTable(users) {
+    const tableBody = document.getElementById("usersTable");
+    tableBody.innerHTML = ""; // Clear any existing rows
+
+    users.forEach((user) => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${user.userId}</td>
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.role}</td>
+        <td>
+          <button class="btn btn-warning" onclick="editUser(${user.userId})">Edit</button>
+          <button class="btn btn-danger" onclick="deleteUser(${user.userId})">Delete</button>
+        </td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+  }
+
+  // Create or update user
+  document.getElementById("userForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const userName = document.getElementById("userName").value;
+    const userEmail = document.getElementById("userEmail").value;
+    const userRole = document.getElementById("userRole").value;
+    const userId = document.getElementById("userId").value;
+
+    const userData = {
+      name: userName,
+      email: userEmail,
+      role: userRole,
+    };
+
+    try {
+      let response;
+
+      if (userId) {
+        response = await fetch(`https://fsm-nx79.onrender.com/api/users/${userId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: localStorage.getItem("adminToken"),
+          },
+          body: JSON.stringify(userData),
+        });
+      } else {
+        response = await fetch("https://fsm-nx79.onrender.com/api/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: localStorage.getItem("adminToken"),
+          },
+          body: JSON.stringify(userData),
+        });
+      }
+
+      if (response.ok) {
+        fetchUsers(); // Refresh the user list
+        alert("User saved successfully!");
+        const userModal = new bootstrap.Modal(document.getElementById("userModal"));
+        userModal.hide(); // Close the modal
+      } else {
+        const error = await response.json();
+        alert(error.message || "Failed to save user.");
+      }
+    } catch (error) {
+      console.error("Error saving user:", error);
+      alert("An error occurred. Please try again.");
+    }
+  });
+
+  // Edit user
+  async function editUser(userId) {
+    const token = localStorage.getItem("adminToken");
+
+    try {
+      const response = await fetch(`https://fsm-nx79.onrender.com/api/users/${userId}`, {
+        headers: { Authorization: token },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+
+      const user = await response.json();
+
       document.getElementById("userName").value = user.name;
       document.getElementById("userEmail").value = user.email;
       document.getElementById("userRole").value = user.role;
       document.getElementById("userId").value = user.userId;
       document.getElementById("userModalLabel").textContent = "Update User";
-      document.getElementById("userModal").modal("show");
+      const userModal = new bootstrap.Modal(document.getElementById("userModal"));
+      userModal.show();
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      alert("An error occurred. Please try again.");
     }
+  }
 
-    // Delete user
-    async function deleteUser(userId) {
-      const confirmDelete = confirm("Are you sure you want to delete this user?");
-      if (confirmDelete) {
-        try {
-          const response = await fetch(`https://fsm-nx79.onrender.com/api/users/${userId}`, {
-            method: "DELETE",
-            headers: { Authorization: localStorage.getItem("adminToken") },
-          });
+  // Delete user
+  async function deleteUser(userId) {
+    const confirmDelete = confirm("Are you sure you want to delete this user?");
+    if (confirmDelete) {
+      try {
+        const response = await fetch(`https://fsm-nx79.onrender.com/api/users/${userId}`, {
+          method: "DELETE",
+          headers: { Authorization: localStorage.getItem("adminToken") },
+        });
 
-          if (response.ok) {
-            fetchUsers(); // Refresh user list
-            alert("User deleted successfully.");
-          } else {
-            alert("Failed to delete user.");
-          }
-        } catch (error) {
-          console.error("Error deleting user:", error);
-          alert("An error occurred. Please try again.");
+        if (response.ok) {
+          fetchUsers(); // Refresh user list
+          alert("User deleted successfully.");
+        } else {
+          alert("Failed to delete user.");
         }
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        alert("An error occurred. Please try again.");
       }
     }
+  }
 
-    window.onload = function () {
-      fetchUsers(); // Fetch users on page load
-    };
-  </script>
+  window.onload = function () {
+    fetchUsers(); // Fetch users on page load
+  };
+</script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+
 </body>
 </html>
